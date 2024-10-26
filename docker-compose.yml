@@ -1,0 +1,49 @@
+services:
+
+  gateway:
+    build: 
+      context: ./api/gateway
+      dockerfile: Dockerfile
+    environment:
+      - SERVICE_PORT=${GATEWAY_CONTAINER_PORT:-3000}
+    ports:
+      - "${GATEWAY_HOST_PORT:-3000}:${GATEWAY_CONTAINER_PORT:-3000}"
+    networks:
+      - chat_network
+
+
+  auth:
+    build: 
+      context: ./api/auth
+      dockerfile: Dockerfile
+    environment:
+      - SERVICE_PORT = ${AUTH_CONTAINER_PORT:-3001}
+    ports:
+      - "${AUTH_CONTAINER_PORT:-3001}"
+    networks:
+      - chat_network
+
+  redis:
+      image: redis:7.4-alpine
+      networks:
+        - chat_network
+
+  database:
+    image: mysql:8
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD = ${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE = ${MYSQL_DATABASE}
+    ports:
+      - "${MYSQL_CONTAINER_PORT:-3306}"
+    networks:
+      - chat_network
+    volumes:
+      - mysql_data:/var/lib/mysql
+    
+volumes:
+  mysql_data:
+
+networks:
+  chat_network:
+    driver: bridge
