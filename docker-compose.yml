@@ -28,7 +28,7 @@ services:
       networks:
         - chat_network
 
-  database:
+  mysql:
     image: mysql:8
     restart: always
     environment:
