@@ -1,9 +1,28 @@
 services:
+    
+  database:
+    build:
+      context: ./api/database
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      - SERVICE_PORT=${DATABASE_CONTAINER_PORT:-3003}
+      - MYSQL_CONTAINER_PORT=${MYSQL_CONTAINER_PORT}
+    ports:
+      - ${DATABASE_CONTAINER_PORT:-3003}
+    depends_on:
+      - mysql
+      # con depends_on en el Compose y el uso de wait-for-it.sh en el Dockerfile de database, te aseguras que el servicio de database no intente conectarse a MySQL hasta que esté totalmente operativo. Esta combinación debería ser suficiente para manejar la dependencia y los tiempos de inicio correctamente. HAciendo esto no se necesitaria el healthcheck
+    networks:
+      - chat_network
 
   gateway:
     build: 
       context: ./api/gateway
       dockerfile: Dockerfile
+    env_file:
+      - ./.env
     environment:
       - SERVICE_PORT=${GATEWAY_CONTAINER_PORT:-3000}
     ports:
@@ -11,13 +30,14 @@ services:
     networks:
       - chat_network
 
-
   auth:
     build: 
       context: ./api/auth
       dockerfile: Dockerfile
+    env_file:
+      - ./.env
     environment:
-      - SERVICE_PORT = ${AUTH_CONTAINER_PORT:-3001}
+      - SERVICE_PORT=${AUTH_CONTAINER_PORT:-3001}
     ports:
       - "${AUTH_CONTAINER_PORT:-3001}"
     networks:
@@ -31,19 +51,95 @@ services:
   mysql:
     image: mysql:8
     restart: always
+    env_file:
+      - ./.env
     environment:
-      - MYSQL_ROOT_PASSWORD = ${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE = ${MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
     ports:
       - "${MYSQL_CONTAINER_PORT:-3306}"
     networks:
       - chat_network
     volumes:
       - mysql_data:/var/lib/mysql
-    
+    # healthcheck:  
+    #   test: ["CMD", "mysqladmin", "ping", "-h", "mysql", "-P", "${MYSQL_CONTAINER_PORT:-3306}", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+       # Si ya estoy usando wait-for-it.sh para esperar a que MySQL esté completamente listo antes de ejecutar la aplicación, el health check no es estrictamente necesario para esa fase inicial. Sin embargo este actua de manera continua durante la ejecución del contenedor. Monitorea la salud de MySQL durante el ciclo de vida del contenedor, no solo en el arranque, sino también en caso de que MySQL tenga problemas posteriores (por ejemplo, si el servicio se bloquea después de haber estado en funcionamiento)
+
 volumes:
   mysql_data:
 
 networks:
   chat_network:
     driver: bridge
+
+# ------------------------------------------------------------------OPCIONES PARA CONTROLAR DEPENDENCIAS ENRTE SERCIVIOS EN DOCKER ------------------------------------------------------------------
+
+# Cuando trabajas con múltiples contenedores que dependen entre sí, como una aplicación y una base de datos (MySQL), es importante asegurarse de que el servicio dependiente (MySQL) esté completamente funcional antes de que la aplicación comience a ejecutarse. Existen dos opciones comunes para gestionar esta dependencia:
+
+# ------------------------------- OPCION 1 - Unicamnete usando configuracion nativa de Docker. -------------------------------
+  # En el servicio que es dependiente de otro, se debe colocar la propiedad ->
+    # depends_on:
+    #   mysql:
+    #     condition: service_healthy
+  
+  # En el servicio del cual se dpeende se debe colcoar las condiciones del helthcheck
+    # healthcheck:  
+       #   test: ["CMD", "mysqladmin", "ping", "-h", "mysql", "-P", "${MYSQL_CONTAINER_PORT:-3306}", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+       #   interval: 10s
+       #   timeout: 5s
+       #   retries: 5
+
+# Pros:
+
+  # Simplicidad: Todo está gestionado por Docker Compose, y no necesitas añadir scripts adicionales como wait-for-it en tu aplicación.
+  # Confiabilidad: Docker se asegura de que MySQL esté completamente saludable antes de arrancar el servicio dependiente, ya que el healthcheck está diseñado específicamente para verificar que el servicio esté listo para aceptar conexiones.
+  # Automatización nativa: Docker ya incluye la capacidad de manejar el estado de salud del servicio de forma nativa, lo que simplifica la configuración y hace que el proceso sea más predecible.
+
+# Contras:
+
+# Limitaciones de eventos en tiempo de ejecución: Si MySQL falla durante la ejecución, la aplicación no se detiene ni se reinicia automáticamente, lo cual puede ser un problema si tu aplicación necesita una conexión continua con MySQL.
+# Versiones de Docker Compose: La opción condition: service_healthy está disponible solo a partir de Docker Compose v3.4. Si estás usando una versión anterior, no tendrás soporte para esta característica.
+
+# Escenario ideal:
+
+  # Cuando tienes un entorno sencillo y controlado.
+  # Si MySQL está corriendo en el mismo entorno que la aplicación y puedes confiar en que Docker Compose manejará bien los tiempos de arranque.
+  # Ideal para aplicaciones que no necesitan mucha lógica personalizada para manejar problemas de disponibilidad de servicios.
+
+# ------------------------------- OPCION 2 - Usando un script externo (wait.for-it.sh) y configurando docker-compose y Dokerfile. -------------------------------
+
+  # En el servicio que es dependiente de otro, se debe colocar la propiedad (dentro del docker-compose) ->
+    # depends_on:
+    #   - mysql
+  
+  # En el Dockerfile del servicio que es dependiente de otro, se debe copiar el archivo externo, darle permisos de ejecucion y luego ejecutarlo con CMD configurando su accionar y comandos posteriores que dependen de esta espera:
+    # estos comandos se ejecutan antes del build:
+
+      # COPY ./wait-for-it.sh /usr/local/bin/wait-for-it
+      # RUN chmod +x /usr/local/bin/wait-for-it
+
+    # este comando se ejecuta luego de todos los RUN necesarios para construir la imagen:
+
+      # CMD /usr/local/bin/wait-for-it mysql:${MYSQL_CONTAINER_PORT} --timeout=60 --strict -- npm run migrate && npm run start
+
+# Pros:
+
+  # Mayor flexibilidad: Puedes configurar exactamente cuánto tiempo esperar y qué hacer si MySQL no está listo (por ejemplo, tiempos de espera personalizados, manejo de fallos, etc.).
+  # Control explícito: wait-for-it te permite asegurar que tu aplicación solo se inicia después de que MySQL esté realmente disponible y accesible. Incluso puedes hacer validaciones más complejas si es necesario.
+  # Escenarios de externalización: Si tienes servicios externos a los que necesitas conectarte (como una base de datos en otro servidor), wait-for-it puede ser útil para asegurarte de que esos servicios externos estén listos.
+
+# Contras:
+
+  # Mayor complejidad: Añades scripts adicionales a tu Dockerfile, lo que puede hacer que la configuración sea más difícil de mantener.
+  # No es una solución nativa de Docker: Aunque wait-for-it es muy usado, no es una solución nativa de Docker, por lo que estás agregando una capa extra de lógica fuera de lo que Docker puede manejar por sí mismo.
+  # Problemas de manejo de fallos: Si bien wait-for-it maneja fallos durante el arranque, no ofrece mecanismos para gestionar lo que ocurre si MySQL se cae después de que la aplicación ya está corriendo (similar a la Opción 1).
+
+# Escenario ideal:
+
+  # Cuando tienes un entorno más complejo o externo, en el que MySQL u otros servicios no se encuentran en el mismo servidor o son servicios externos.
+  # Si necesitas validaciones específicas que no puedes hacer con un healthcheck estándar de Docker Compose.
+  # En escenarios donde no puedes actualizar Docker Compose a la versión más reciente para usar la condición service_healthy.

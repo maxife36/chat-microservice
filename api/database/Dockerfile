@@ -31,7 +31,6 @@ EXPOSE ${PORT}
 
 # No se puede usar múltiples CMD en un Dockerfile, ya que Docker permite un solo CMD por contenedor. Sin embargo, se puede usar múltiples comandos RUN, pero estos se ejecutan en el momento de construir la imagen, no cuando se inicia el contenedor.
 # Dado que quiero ejecutar npm run migrate y npm run start después de que MySQL esté listo, esto debe ocurrir en el momento de arranque del contenedor, no durante la construcción de la imagen. Para hacerlo, necesito combinarlos en un solo CMD, ya que es el comando que se ejecuta al iniciar el contenedor.
-# 
 CMD /usr/local/bin/wait-for-it mysql:${MYSQL_CONTAINER_PORT} --timeout=60 --strict -- npm run migrate && npm run start
 
 # OPCION 2 para los MULTIPLES COMANDOS CMD
