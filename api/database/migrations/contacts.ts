@@ -1,7 +1,8 @@
-const  { DataTypes } = require('sequelize');
+import path from "path";
+import { QueryInterface, DataTypes } from "sequelize";
 
-module.exports = {
-  up: async (queryInterface) => {
+const migrations = {
+  up: async function (queryInterface: QueryInterface): Promise<void> {
     await queryInterface.createTable("contacts", {
       id: {
         type: DataTypes.UUID,
@@ -48,7 +49,11 @@ module.exports = {
     });
   },
 
-  down: async (queryInterface) => {
+  down: async function (queryInterface: QueryInterface): Promise<void> {
     await queryInterface.dropTable("contacts");
   },
+  
+  pathName: path.basename(__filename)
 };
+
+export default migrations;
