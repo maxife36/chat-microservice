@@ -16,3 +16,14 @@ export class ContactDto {
     return plainToClass(ContactDto, plain);
   }
 }
+
+export class UpdateContactDto {
+  @IsNotEmpty()
+  @IsString()
+  @IsUUID()
+  contactId!: string;
+
+  static fromPlain(plain: object): UpdateContactDto {
+    return plainToClass(UpdateContactDto, plain);
+  }
+}
