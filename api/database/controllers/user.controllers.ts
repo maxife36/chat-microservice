@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import { UserDto } from "../dtos/user.dto";
+import { UpdateUserDto, UserDto } from "../dtos/user.dto";
 import Models from "../models/index";
 import { NotFoundError } from "../handlers/errors/Errors";
 import { validate } from "class-validator";
 import { ValidationErrorHandler } from "../handlers/validationErrorHandler";
 import { HttpStatusCode, SuccessMessage } from "../handlers/enums";
 import { responseHandler } from "../handlers/responseHandler";
+import { Op } from "sequelize";
+import checkUniqueFields from "../utils/checkUniqueFields";
 
 const { User } = Models;
 
@@ -65,7 +67,13 @@ export const createUser = async (
 ) => {
   try {
     const userDto = UserDto.fromPlain(req.body);
-    const errors = await validate(userDto);
+    let errors = await validate(userDto);
+
+    if (errors.length > 0) {
+      throw ValidationErrorHandler(errors);
+    }
+    
+    errors = await checkUniqueFields(User, userDto)
 
     if (errors.length > 0) {
       throw ValidationErrorHandler(errors);
@@ -88,8 +96,14 @@ export const updateUser = async (
 ) => {
   try {
     const userId = req.params.id;
-    const userDto = UserDto.fromPlain(req.body);
-    const errors = await validate(userDto);
+    const userDto = UpdateUserDto.fromPlain(req.body);
+    let errors = await validate(userDto);
+
+    if (errors.length > 0) {
+      throw ValidationErrorHandler(errors);
+    }
+
+    errors = await checkUniqueFields(User, userDto)
 
     if (errors.length > 0) {
       throw ValidationErrorHandler(errors);
