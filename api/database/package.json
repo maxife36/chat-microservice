@@ -6,7 +6,7 @@
     "build": "tsc",
     "dev": "ts-node-dev main.ts",
     "start": "node build/main.js",
-    "migrate": "npx sequelize-cli db:migrate"
+    "migrate": "node build/migrations/index.js"
   },
   "keywords": [],
   "author": "",
