@@ -6,7 +6,7 @@
     "build": "tsc",
     "dev": "ts-node-dev main.ts",
     "start": "node build/main.js",
-    "migrate": "node build/migrations/index.js"
+    "migrate": "node build/src/migrations/index.js"
   },
   "keywords": [],
   "author": "",

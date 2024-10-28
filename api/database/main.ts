@@ -1,8 +1,8 @@
 import express from "express";
 import dotenv from "dotenv";
-import contactRoutes from "./routes/contact.routes";
-import userRoutes from "./routes/user.route";
-import errorHandler from "./handlers/errorHandler";
+import contactRoutes from "./src/routes/contact.routes";
+import userRoutes from "./src/routes/user.route";
+import errorHandler from "./src/handlers/errorHandler";
 
 dotenv.config();
 
