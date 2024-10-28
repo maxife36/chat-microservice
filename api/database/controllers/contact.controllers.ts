@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import { ContactDto } from "../dtos/contact.dto";
+import { ContactDto, UpdateContactDto } from "../dtos/contact.dto";
 import Models from "../models/index";
 import { NotFoundError } from "../handlers/errors/Errors";
 import { validate } from "class-validator";
 import { ValidationErrorHandler } from "../handlers/validationErrorHandler";
 import { responseHandler } from "../handlers/responseHandler";
 import { HttpStatusCode, SuccessMessage } from "../handlers/enums";
+import checkUniqueFields from "../utils/checkUniqueFields";
+import checkPkExist from "../utils/checkPkExist";
 
 const { Contact, User } = Models;
 
@@ -103,7 +105,20 @@ export const createContact = async (
 ) => {
   try {
     const contactDto = ContactDto.fromPlain(req.body);
-    const errors = await validate(contactDto);
+    let errors = await validate(contactDto);
+
+    if (errors.length > 0) {
+      throw ValidationErrorHandler(errors);
+    }
+
+    errors = await checkUniqueFields(Contact, contactDto);
+
+    if (errors.length > 0) {
+      throw ValidationErrorHandler(errors);
+    }
+
+    // Verificar que userId y contactId existen en la tabla users
+    errors = await checkPkExist(User, contactDto);
 
     if (errors.length > 0) {
       throw ValidationErrorHandler(errors);
@@ -126,14 +141,28 @@ export const updateContact = async (
 ) => {
   try {
     const registerId = req.params.id;
-    const contactDto = ContactDto.fromPlain(req.body);
-    const errors = await validate(contactDto);
+    const contactDto = UpdateContactDto.fromPlain(req.body);
+    let errors = await validate(contactDto);
+
+    if (errors.length > 0) {
+      throw ValidationErrorHandler(errors);
+    }
+
+    errors = await checkUniqueFields(Contact, contactDto);
+
+    if (errors.length > 0) {
+      throw ValidationErrorHandler(errors);
+    }
+
+    // Verificar que contactId existe en la tabla users
+    errors = await checkPkExist(User, contactDto);
 
     if (errors.length > 0) {
       throw ValidationErrorHandler(errors);
     }
 
     const contact = await Contact.findByPk(registerId);
+
     if (!contact) {
       throw new NotFoundError();
     }
