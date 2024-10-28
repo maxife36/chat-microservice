@@ -6,7 +6,6 @@ import { validate } from "class-validator";
 import { ValidationErrorHandler } from "../handlers/validationErrorHandler";
 import { HttpStatusCode, SuccessMessage } from "../handlers/enums";
 import { responseHandler } from "../handlers/responseHandler";
-import { Op } from "sequelize";
 import checkUniqueFields from "../utils/checkUniqueFields";
 
 const { User } = Models;
