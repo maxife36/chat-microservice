@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import dotenv from "dotenv";
 import contactRoutes from "./routes/contact.routes";
 import userRoutes from "./routes/user.route";
