@@ -6,6 +6,16 @@ type Metadata = {
   [key: string]: any;
 };
 
+export type SuccessResponse = {
+  error: boolean;
+  data: { [key: string]: any };
+  metadata: {
+    message?: SuccessMessage;
+    timestamp: Date;
+    [key: string]: any;
+  };
+};
+
 export const responseHandler = (
   res: Response,
   data: object = {},
