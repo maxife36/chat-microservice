@@ -21,7 +21,7 @@ const migrations = {
         allowNull: false,
       },
       password: {
-        type: DataTypes.STRING(50),
+        type: DataTypes.STRING(60),
         allowNull: false,
       },
       createdAt: {

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { UpdateUserDto, UserDto } from "../dtos/user.dto";
+import { UpdateUserDto, UserDto, UserFilterDto } from "../dtos/user.dto";
 import Models from "../models/index";
 import { NotFoundError } from "../handlers/errors/Errors";
 import { validate } from "class-validator";
@@ -7,6 +7,7 @@ import { ValidationErrorHandler } from "../handlers/validationErrorHandler";
 import { HttpStatusCode, SuccessMessage } from "../handlers/enums";
 import { responseHandler } from "../handlers/responseHandler";
 import checkUniqueFields from "../utils/checkUniqueFields";
+import { Op } from "sequelize";
 
 const { User } = Models;
 
@@ -48,6 +49,38 @@ export const getUser = async (
   try {
     const userId = req.params.id;
     const user = await User.findByPk(userId);
+
+    if (!user) {
+      throw new NotFoundError();
+    }
+
+    return responseHandler(res, user);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserFilter = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userDto = UserFilterDto.fromPlain(req.query);
+    let errors = await validate(userDto);
+
+    if (errors.length > 0) {
+      throw ValidationErrorHandler(errors);
+    }
+
+    const user = await User.findOne({
+      where: {
+        [Op.or]:[
+          {username : userDto.username ?? ""},
+          {email : userDto.email?? ""}
+        ]
+      }
+    });
 
     if (!user) {
       throw new NotFoundError();

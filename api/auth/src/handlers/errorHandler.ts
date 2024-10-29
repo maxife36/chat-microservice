@@ -5,7 +5,7 @@ import { ValidationError } from "./errors/Errors";
 import { ExternalApiError } from "./errors/ExternalApiError";
 
 const errorHandler = (
-  err: Error,
+  err: any,
   req: Request,
   res: Response,
   next: NextFunction
